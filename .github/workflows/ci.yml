@@ -25,31 +25,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/share/solana
-          key: solana-2.1.21-linux
+          key: solana-3.1.11-linux
 
       - name: Install Solana CLI
         if: steps.cache-solana.outputs.cache-hit != 'true'
-        run: sh -c "$(curl -sSfL https://release.anza.xyz/v2.1.21/install)"
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.11/install)"
 
       - name: Add Solana to PATH
         run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Rust 1.89.0
+      - name: Install Rust 1.92.0
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.89.0
-
-      - name: Override Solana's bundled cargo
-        run: |
-          ln -sf "$HOME/.cargo/bin/cargo" \
-            "$HOME/.local/share/solana/install/active_release/bin/cargo"
+          toolchain: 1.92.0
 
       - name: Cache Anchor CLI
         id: cache-anchor
         uses: actions/cache@v4
         with:
           path: ~/.local/bin/anchor
-          key: anchor-0.32.1-rust-1.89.0-linux
+          key: anchor-0.32.1-linux
 
       - name: Install Anchor CLI
         if: steps.cache-anchor.outputs.cache-hit != 'true'
