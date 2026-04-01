@@ -49,10 +49,15 @@ jobs:
       - name: Install Anchor CLI
         if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
-          curl -L https://github.com/coral-xyz/anchor/releases/download/v0.30.1/anchor-cli-v0.30.1-x86_64-unknown-linux-gnu.tar.bz2 | tar xj
-          chmod +x anchor
-          mkdir -p ~/.cargo/bin
-          mv anchor ~/.cargo/bin/
+          # Install AVM (very fast, just a few seconds)
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          
+          # Use AVM to install the specific version
+          avm install 0.30.1
+          avm use 0.30.1
+          
+          # Ensure it's in the cargo bin for the cache to pick up
+          cp $(which anchor) ~/.cargo/bin/anchor
 
       - name: Add Anchor to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
