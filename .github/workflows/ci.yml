@@ -39,6 +39,11 @@ jobs:
         with:
           toolchain: 1.89.0
 
+      - name: Override Solana's bundled cargo
+        run: |
+          ln -sf "$(rustup which cargo)" \
+            "$HOME/.local/share/solana/install/active_release/bin/cargo"
+
       - name: Cache Anchor CLI
         id: cache-anchor
         uses: actions/cache@v4
