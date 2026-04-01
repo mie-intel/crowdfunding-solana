@@ -25,6 +25,9 @@ jobs:
         with:
           workspaces: "./programs/crowdfunding -> target"
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libudev-dev libssl-dev
+
       - name: Cache Anchor CLI binary
         id: cache-anchor
         uses: actions/cache@v4
