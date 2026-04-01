@@ -34,17 +34,17 @@ jobs:
       - name: Add Solana to PATH
         run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Rust 1.85.0
+      - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.85.0
+          toolchain: 1.89.0
 
       - name: Cache Anchor CLI
         id: cache-anchor
         uses: actions/cache@v4
         with:
           path: ~/.local/bin/anchor
-          key: anchor-0.32.1-linux
+          key: anchor-0.32.1-rust-1.89.0-linux
 
       - name: Install Anchor CLI
         if: steps.cache-anchor.outputs.cache-hit != 'true'
