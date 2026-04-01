@@ -41,7 +41,7 @@ jobs:
 
       - name: Override Solana's bundled cargo
         run: |
-          ln -sf "$(rustup which cargo)" \
+          ln -sf "$HOME/.cargo/bin/cargo" \
             "$HOME/.local/share/solana/install/active_release/bin/cargo"
 
       - name: Cache Anchor CLI
