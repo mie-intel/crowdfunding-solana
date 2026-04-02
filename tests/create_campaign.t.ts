@@ -26,7 +26,7 @@ describe("Campaign Creation", () => {
     // campaign PDA must be passed explicitly: Anchor's resolver cannot chain
     // registry → registry.campaign_count → campaign PDA in a single pass.
     const tx = await program.methods
-      .createCampaign(goal, deadline)
+      .createCampaign("My First Campaign", "Raising funds for a great cause", goal, deadline)
       .accountsPartial({ creator: provider.wallet.publicKey, campaign: campaignPda })
       .rpc();
 
@@ -35,6 +35,8 @@ describe("Campaign Creation", () => {
     const campaign = await program.account.campaign.fetch(campaignPda);
     assert.ok((campaign.id as anchor.BN).eq(expectedId));
     assert.ok(campaign.creator.equals(provider.wallet.publicKey));
+    assert.strictEqual(campaign.title, "My First Campaign");
+    assert.strictEqual(campaign.description, "Raising funds for a great cause");
     assert.ok((campaign.goal as anchor.BN).eq(goal));
     assert.ok((campaign.raised as anchor.BN).eqn(0));
     assert.ok((campaign.deadline as anchor.BN).eq(deadline));
@@ -55,14 +57,14 @@ describe("Campaign Creation", () => {
 
     const idA = await nextCampaignId(program);
     await program.methods
-      .createCampaign(new anchor.BN(1_000_000), deadline)
+      .createCampaign("Campaign A", "Description A", new anchor.BN(1_000_000), deadline)
       .accountsPartial({ creator: creatorA.publicKey, campaign: getCampaignPda(program.programId, idA) })
       .signers([creatorA])
       .rpc();
 
     const idB = await nextCampaignId(program);
     await program.methods
-      .createCampaign(new anchor.BN(2_000_000), deadline)
+      .createCampaign("Campaign B", "Description B", new anchor.BN(2_000_000), deadline)
       .accountsPartial({ creator: creatorB.publicKey, campaign: getCampaignPda(program.programId, idB) })
       .signers([creatorB])
       .rpc();
@@ -87,7 +89,7 @@ describe("Campaign Creation", () => {
 
     try {
       await program.methods
-        .createCampaign(goal, deadline)
+        .createCampaign("Test", "Test description", goal, deadline)
         .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
         .signers([creator])
         .rpc();
@@ -109,7 +111,7 @@ describe("Campaign Creation", () => {
 
     try {
       await program.methods
-        .createCampaign(goal, deadline)
+        .createCampaign("Test", "Test description", goal, deadline)
         .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
         .signers([creator])
         .rpc();
@@ -118,6 +120,48 @@ describe("Campaign Creation", () => {
       assert.ok(err instanceof anchor.AnchorError, "Expected an AnchorError");
       assert.strictEqual(err.error.errorCode.code, "DeadlineInPast");
       assert.strictEqual(err.error.errorCode.number, 6001);
+    }
+  });
+
+  it("Fails when title exceeds 50 characters", async () => {
+    const creator = anchor.web3.Keypair.generate();
+    await airdrop(provider.connection, creator.publicKey);
+
+    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const longTitle = "A".repeat(51);
+
+    try {
+      await program.methods
+        .createCampaign(longTitle, "Valid description", new anchor.BN(1_000_000_000), new anchor.BN(Math.floor(Date.now() / 1000) + 3600))
+        .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
+        .signers([creator])
+        .rpc();
+      assert.fail("Expected transaction to fail with TitleTooLong error");
+    } catch (err) {
+      assert.ok(err instanceof anchor.AnchorError, "Expected an AnchorError");
+      assert.strictEqual(err.error.errorCode.code, "TitleTooLong");
+      assert.strictEqual(err.error.errorCode.number, 6011);
+    }
+  });
+
+  it("Fails when description exceeds 200 characters", async () => {
+    const creator = anchor.web3.Keypair.generate();
+    await airdrop(provider.connection, creator.publicKey);
+
+    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const longDescription = "A".repeat(201);
+
+    try {
+      await program.methods
+        .createCampaign("Valid title", longDescription, new anchor.BN(1_000_000_000), new anchor.BN(Math.floor(Date.now() / 1000) + 3600))
+        .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
+        .signers([creator])
+        .rpc();
+      assert.fail("Expected transaction to fail with DescTooLong error");
+    } catch (err) {
+      assert.ok(err instanceof anchor.AnchorError, "Expected an AnchorError");
+      assert.strictEqual(err.error.errorCode.code, "DescTooLong");
+      assert.strictEqual(err.error.errorCode.number, 6012);
     }
   });
 
@@ -134,7 +178,7 @@ describe("Campaign Creation", () => {
 
     try {
       await program.methods
-        .createCampaign(goal, deadline)
+        .createCampaign("Test", "Test description", goal, deadline)
         .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
         .signers([creator])
         .rpc();

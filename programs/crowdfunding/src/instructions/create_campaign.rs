@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::CrowdfundingError;
-use crate::{Campaign, CampaignCreated, CampaignRegistry};
+use crate::events::CampaignCreated;
+use crate::state::{Campaign, CampaignRegistry};
 
 /// Creates a new fundraising campaign and assigns it a unique sequential ID.
 ///
@@ -13,27 +14,45 @@ use crate::{Campaign, CampaignCreated, CampaignRegistry};
 /// can observe it (Solana instructions do not return values to the caller).
 ///
 /// # Arguments
-/// * `goal`     - Target amount in lamports; must be greater than zero.
-/// * `deadline` - Unix timestamp after which funds can be withdrawn or refunded;
-///                must be strictly in the future.
+/// * `title`       - Campaign title; max 50 characters.
+/// * `description` - Campaign description; max 200 characters.
+/// * `goal`        - Target amount in lamports; must be greater than zero.
+/// * `deadline`    - Unix timestamp after which funds can be withdrawn or refunded;
+///                   must be strictly in the future.
 ///
 /// # Errors
-/// * [`CrowdfundingError::ZeroGoal`]      — goal is zero.
-/// * [`CrowdfundingError::DeadlineInPast`] — deadline is not in the future.
-/// * [`CrowdfundingError::Overflow`]       — campaign_count would overflow u64.
+/// * [`CrowdfundingError::ZeroGoal`]        — goal is zero.
+/// * [`CrowdfundingError::DeadlineInPast`]  — deadline is not in the future.
+/// * [`CrowdfundingError::TitleTooLong`]    — title exceeds 50 characters.
+/// * [`CrowdfundingError::DescTooLong`]     — description exceeds 200 characters.
+/// * [`CrowdfundingError::Overflow`]        — campaign_count would overflow u64.
 ///
 /// # Side Effects
 /// * Initialises (or reuses) the `CampaignRegistry` account.
 /// * Initialises the `Campaign` account.
 /// * Increments `registry.campaign_count`.
 /// * Emits a `CampaignCreated` event.
-pub fn create_campaign(ctx: Context<CreateCampaign>, goal: u64, deadline: i64) -> Result<()> {
+pub fn create_campaign(
+    ctx: Context<CreateCampaign>,
+    title: String,
+    description: String,
+    goal: u64,
+    deadline: i64,
+) -> Result<()> {
     let clock = Clock::get()?;
 
     require!(goal > 0, CrowdfundingError::ZeroGoal);
     require!(
         deadline > clock.unix_timestamp,
         CrowdfundingError::DeadlineInPast
+    );
+    require!(
+        title.len() <= Campaign::MAX_TITLE_LEN,
+        CrowdfundingError::TitleTooLong
+    );
+    require!(
+        description.len() <= Campaign::MAX_DESCRIPTION_LEN,
+        CrowdfundingError::DescTooLong
     );
 
     // Snapshot the current count — this becomes the new campaign's ID.
@@ -51,6 +70,8 @@ pub fn create_campaign(ctx: Context<CreateCampaign>, goal: u64, deadline: i64) -
     let campaign = &mut ctx.accounts.campaign;
     campaign.id = campaign_id;
     campaign.creator = ctx.accounts.creator.key();
+    campaign.title = title.clone();
+    campaign.description = description.clone();
     campaign.goal = goal;
     campaign.raised = 0;
     campaign.deadline = deadline;
@@ -62,13 +83,16 @@ pub fn create_campaign(ctx: Context<CreateCampaign>, goal: u64, deadline: i64) -
     emit!(CampaignCreated {
         id: campaign_id,
         creator: ctx.accounts.creator.key(),
+        title,
+        description,
         goal,
         deadline,
     });
 
     msg!(
-        "Campaign created: id={}, goal={}, deadline={}",
+        "Campaign created: id={}, title={}, goal={}, deadline={}",
         campaign_id,
+        campaign.title,
         goal,
         deadline
     );

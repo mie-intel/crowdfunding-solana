@@ -2,7 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
 use crate::errors::CrowdfundingError;
-use crate::{Campaign, Contribution};
+use crate::events::Contributed;
+use crate::state::{Campaign, Contribution};
 
 /// Contributes SOL to an active campaign.
 ///
@@ -67,11 +68,18 @@ pub fn contribute(ctx: Context<Contribute>, amount: u64) -> Result<()> {
         amount,
     )?;
 
+    emit!(Contributed {
+        campaign: ctx.accounts.campaign.key(),
+        contributor: ctx.accounts.contributor.key(),
+        amount,
+        total_raised: ctx.accounts.campaign.raised,
+    });
+
     msg!(
         "Contribution: contributor={}, amount={}, campaign_raised={}",
         ctx.accounts.contributor.key(),
         amount,
-        campaign.raised,
+        ctx.accounts.campaign.raised,
     );
 
     Ok(())
@@ -114,3 +122,4 @@ pub struct Contribute<'info> {
 
     pub system_program: Program<'info, System>,
 }
+

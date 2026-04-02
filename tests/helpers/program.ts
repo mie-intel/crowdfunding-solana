@@ -27,13 +27,15 @@ export async function createCampaign(
   program: Program<Crowdfunding>,
   creator: anchor.web3.Keypair,
   goal = new anchor.BN(5_000_000_000),
-  deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 3600)
+  deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 3600),
+  title = "Test Campaign",
+  description = "A test campaign description"
 ): Promise<anchor.web3.PublicKey> {
   const id = await nextCampaignId(program);
   const campaignPda = getCampaignPda(program.programId, id);
 
   await program.methods
-    .createCampaign(goal, deadline)
+    .createCampaign(title, description, goal, deadline)
     .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
     .signers([creator])
     .rpc();

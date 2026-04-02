@@ -134,6 +134,32 @@ describe("Contribute", () => {
     assert.equal(vaultBalance, amountA.add(amountB).toNumber());
   });
 
+  it("Allows contributions that push raised above the goal (no cap)", async () => {
+    const creator = anchor.web3.Keypair.generate();
+    const contributor = anchor.web3.Keypair.generate();
+    await airdrop(provider.connection, creator.publicKey);
+    await airdrop(provider.connection, contributor.publicKey);
+
+    // Goal is 1 SOL but contributor sends 3 SOL — should succeed.
+    const goal = new anchor.BN(1_000_000_000);
+    const overAmount = new anchor.BN(3_000_000_000);
+    const campaignPda = await createCampaign(program, creator, goal);
+    const vaultPda = getVaultPda(program.programId, campaignPda);
+
+    await program.methods
+      .contribute(overAmount)
+      .accounts({ campaign: campaignPda, contributor: contributor.publicKey })
+      .signers([contributor])
+      .rpc();
+
+    const campaign = await program.account.campaign.fetch(campaignPda);
+    assert.ok((campaign.raised as anchor.BN).eq(overAmount));
+    assert.ok((campaign.raised as anchor.BN).gt(campaign.goal as anchor.BN));
+
+    const vaultBalance = await provider.connection.getBalance(vaultPda);
+    assert.equal(vaultBalance, overAmount.toNumber());
+  });
+
   it("Fails when amount is zero", async () => {
     const creator = anchor.web3.Keypair.generate();
     const contributor = anchor.web3.Keypair.generate();

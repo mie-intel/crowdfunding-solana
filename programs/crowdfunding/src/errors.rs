@@ -24,4 +24,8 @@ pub enum CrowdfundingError {
     NothingToRefund,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("Title exceeds maximum length of 50 characters")]
+    TitleTooLong,
+    #[msg("Description exceeds maximum length of 200 characters")]
+    DescTooLong,
 }
