@@ -10,7 +10,7 @@ pub use state::*;
 
 use instructions::*;
 
-declare_id!("GmTDmgxynhiV22nrhgaDR9urVQSohyY7tTU5C938bta7");
+declare_id!("GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX");
 
 #[program]
 pub mod crowdfunding {

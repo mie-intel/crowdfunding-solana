@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crowdfunding = "GmTDmgxynhiV22nrhgaDR9urVQSohyY7tTU5C938bta7"
+crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
 
 [registry]
 url = "https://api.apr.dev"
