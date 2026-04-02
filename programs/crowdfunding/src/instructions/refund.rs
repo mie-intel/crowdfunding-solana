@@ -69,13 +69,6 @@ pub fn refund(ctx: Context<Refund>) -> Result<()> {
         amount: refund_amount,
     });
 
-    msg!(
-        "Refund: contributor={}, amount={}, campaign={}",
-        ctx.accounts.contributor.key(),
-        refund_amount,
-        campaign_key,
-    );
-
     Ok(())
 }
 

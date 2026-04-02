@@ -75,13 +75,6 @@ pub fn contribute(ctx: Context<Contribute>, amount: u64) -> Result<()> {
         total_raised: ctx.accounts.campaign.raised,
     });
 
-    msg!(
-        "Contribution: contributor={}, amount={}, campaign_raised={}",
-        ctx.accounts.contributor.key(),
-        amount,
-        ctx.accounts.campaign.raised,
-    );
-
     Ok(())
 }
 

@@ -64,13 +64,6 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         amount: vault_lamports,
     });
 
-    msg!(
-        "Withdraw: campaign={}, creator={}, amount={}",
-        campaign_key,
-        ctx.accounts.creator.key(),
-        vault_lamports,
-    );
-
     Ok(())
 }
 

@@ -89,13 +89,6 @@ pub fn create_campaign(
         deadline,
     });
 
-    msg!(
-        "Campaign created: id={}, title={}, goal={}, deadline={}",
-        campaign_id,
-        campaign.title,
-        goal,
-        deadline
-    );
     Ok(())
 }
 
