@@ -160,7 +160,7 @@ docker build -t solana-custom-3.1.12 .
 solana-verify verify-from-repo \
   -u mainnet-beta \
   --program-id Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S \
-  --docker-image solana-custom-3.1.12 \
+  --base-image solana-custom-3.1.12 \
   https://github.com/mie-intel/crowdfunding-solana
 ```
 
