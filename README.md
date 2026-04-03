@@ -8,18 +8,27 @@ A decentralized crowdfunding program built on Solana using the [Anchor](https://
 
 | Tool | Version |
 |---|---|
-| Rust | 1.89.0 (pinned via `rust-toolchain.toml`) |
-| Solana CLI | 2.x |
-| Anchor CLI | 0.32.1 |
-| Node.js | 18+ |
+| Rust | 1.92.0 (pinned via `rust-toolchain.toml`) |
+| Solana CLI | 3.1.11 |
+| Anchor CLI | 1.0.0 |
+| Node.js | 20+ |
 | pnpm | 9+ |
 
 Install Anchor CLI:
 
 ```bash
-cargo install --git https://github.com/coral-xyz/anchor avm --locked
-avm install 0.32.1
-avm use 0.32.1
+mkdir -p ~/.local/bin
+curl -L https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu \
+  -o ~/.local/bin/anchor
+chmod +x ~/.local/bin/anchor
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Install Solana CLI:
+
+```bash
+sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.11/install)"
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 ```
 
 ---
@@ -43,29 +52,31 @@ solana-keygen new --outfile ~/.config/solana/id.json
 ## Build
 
 ```bash
+# Sync program keypair with declare_id! (required after fresh clone or keypair changes)
+anchor keys sync
+
+# Compile the program
 anchor build
 ```
 
-This compiles the Rust program and generates:
+This generates:
 - `target/idl/crowdfunding.json` — the program's IDL
 - `target/types/crowdfunding.d.ts` — TypeScript types for the client
+- `target/deploy/crowdfunding.so` — the compiled program binary
 
 ---
 
 ## Test
 
-Tests require a local Solana validator. Anchor handles this automatically:
-
 ```bash
 # Build, deploy to local validator, and run all tests
 anchor test
 
-# Run tests against an already-running validator (faster iteration)
-anchor test --skip-deploy
-
-# Run a single test file
-pnpm ts-mocha -p ./tsconfig.json -t 1000000 "tests/create_campaign.t.ts"
+# Run tests without rebuilding (faster iteration)
+anchor test --skip-build --provider.cluster localnet --validator legacy
 ```
+
+The `--validator legacy` flag uses `solana-test-validator` as the local validator.
 
 ---
 
@@ -73,20 +84,20 @@ pnpm ts-mocha -p ./tsconfig.json -t 1000000 "tests/create_campaign.t.ts"
 
 ### Localnet
 
-**1. Sync program ID with your keypair (first time only)**
+**1. Sync program ID with your keypair**
 ```bash
 anchor keys sync
 ```
 
-**2. Start a local validator in a separate terminal**
-```bash
-solana-test-validator --reset
-```
-
-**3. Build and deploy**
+**2. Build and deploy**
 ```bash
 anchor build
-anchor deploy
+anchor deploy --provider.cluster localnet
+```
+
+**3. Fund your wallet if needed**
+```bash
+solana airdrop 10 --url localhost
 ```
 
 **4. Verify**
@@ -103,34 +114,25 @@ solana program show <PROGRAM_ID> --url localhost
 solana config set --url devnet
 ```
 
-**2. Fund your wallet (get SOL from the faucet if needed)**
+**2. Fund your wallet**
 ```bash
-solana balance
-solana airdrop 2   # run twice if needed, limit is 2 SOL per request
+solana airdrop 2
 # If rate-limited: https://faucet.solana.com
 ```
 
-**3. Update `Anchor.toml`**
-```toml
-[provider]
-cluster = "devnet"
-
-[programs.devnet]
-crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
-```
-
-**4. Build and deploy**
+**3. Sync program ID and build**
 ```bash
+anchor keys sync
 anchor build
-anchor deploy
+anchor deploy --provider.cluster devnet
 ```
 
-**5. Verify**
+**4. Verify**
 ```bash
-solana program show GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX --url devnet
+solana program show <PROGRAM_ID> --url devnet
 ```
 
-> After deployment, if the program ID changes, update `declare_id!` in `programs/crowdfunding/src/lib.rs` and `Anchor.toml`. Or run `anchor keys sync` to do it automatically.
+> After deployment, if the program ID changes, run `anchor keys sync` to automatically update `declare_id!` in `lib.rs` and `Anchor.toml`.
 
 ---
 
@@ -138,30 +140,26 @@ solana program show GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX --url devnet
 
 | Network | Program ID | Explorer |
 |---------|------------|---------|
-| Devnet  | `GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX` | [View on Explorer](https://explorer.solana.com/address/GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX?cluster=devnet) |
+| Devnet  | `Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S` | [View on Solscan](https://solscan.io/account/Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S) |
 
 ---
 
 ## Smoke Tests
 
-Smoke tests exercise the full happy-path flow (create campaign → contribute → verify state) against a live deployment. No unit test framework needed — just run the script directly.
+Smoke tests exercise the full happy-path flow (create campaign → contribute → verify state) against a live deployment.
 
 ### Localnet
 
 Requires a running local validator and a deployed program.
 
 ```bash
-# Terminal 1
-solana-test-validator --reset
-
-# Terminal 2
-anchor build && anchor deploy
+anchor build && anchor deploy --provider.cluster localnet
 pnpm smoke
 ```
 
 ### Devnet
 
-Uses your main wallet (`~/.config/solana/id.json`) as both creator and contributor — no airdrop required. Ensure your wallet has at least 1 SOL before running.
+Uses your main wallet (`~/.config/solana/id.json`) as both creator and contributor. Ensure your wallet has at least 1 SOL before running.
 
 ```bash
 pnpm smoke:devnet
@@ -169,41 +167,13 @@ pnpm smoke:devnet
 
 Get devnet SOL at [faucet.solana.com](https://faucet.solana.com) if your balance is low.
 
-**Example output:**
-```
-============================================================
-  Crowdfunding Smoke Test (devnet)
-============================================================
-Program : GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX
-RPC     : https://api.devnet.solana.com
-Wallet  : <your-wallet-address>
-Balance : 3.5000 SOL
-
-[ 1 ] create_campaign...
-  Tx      : 3xKj...
-  Goal    : 0.5000 SOL
-  Raised  : 0.0000 SOL
-
-[ 2 ] contribute...
-  Amount sent     : 0.1000 SOL
-  Campaign raised : 0.1000 SOL
-
-[ 3 ] Registry state...
-  Total campaigns : 1
-
-Total spent : 0.1023 SOL
-============================================================
-  Smoke test passed!
-============================================================
-```
-
 ---
 
 ## Program Architecture
 
 ```
 programs/crowdfunding/src/
-├── lib.rs                   # declare_id!, #[program] entrypoints
+├── lib.rs                   # declare_id!, #[program] entrypoints, security.txt
 ├── errors.rs                # Custom error enum
 ├── events.rs                # On-chain events emitted by each instruction
 ├── state/
@@ -213,7 +183,23 @@ programs/crowdfunding/src/
     ├── create_campaign.rs   # Create a new campaign
     ├── contribute.rs        # Contribute SOL to a campaign
     ├── withdraw.rs          # Creator withdraws after successful campaign
-    └── refund.rs            # Contributor claims refund after failed campaign
+    ├── refund.rs            # Contributor claims refund after failed campaign
+    ├── cancel.rs            # Creator cancels an unfunded campaign
+    └── expire.rs            # Close an expired campaign with no contributions
+
+tests/
+├── helpers/
+│   ├── index.ts             # Re-exports all helpers
+│   ├── constants.ts         # Shared test constants (amounts, durations, etc.)
+│   ├── pda.ts               # PDA derivation helpers
+│   ├── program.ts           # Program client setup
+│   └── network.ts           # Network utilities (e.g. advancing clock)
+├── create_campaign.t.ts     # Tests for create_campaign instruction
+├── contribute.t.ts          # Tests for contribute instruction
+├── withdraw.t.ts            # Tests for withdraw instruction
+├── refund.t.ts              # Tests for refund instruction
+├── cancel.t.ts              # Tests for cancel_campaign instruction
+└── expire.t.ts              # Tests for expire_campaign instruction
 ```
 
 ### Accounts
@@ -370,3 +356,4 @@ program.addEventListener("contributed", (event) => {
 - **`campaign.claimed` flag** set before the vault transfer in `withdraw` — prevents double-withdrawal.
 - **`close = contributor`** on `Contribution` in `refund` — rent is reclaimed and the account cannot be reused after a refund.
 - **Checked arithmetic** (`checked_add`) on all lamport accumulations — overflows are caught and rejected.
+- **`security.txt`** embedded in the program binary — contact info readable on-chain via `solana-security-txt`.
