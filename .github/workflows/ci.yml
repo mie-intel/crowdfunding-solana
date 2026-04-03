@@ -87,7 +87,7 @@ jobs:
           echo '${{ secrets.PROGRAM_KEYPAIR }}' > target/deploy/crowdfunding-keypair.json
 
       - name: Build program
-        run: anchor build
+        run: anchor build 
 
       - name: Generate Solana keypair
         run: |
