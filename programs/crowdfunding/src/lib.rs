@@ -12,6 +12,20 @@ use instructions::*;
 
 declare_id!("Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S");
 
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Crowdfunding",
+    project_url: "https://github.com/mie-intel/crowdfunding-solana",
+    contacts: "email:ini_email_random@gmail.com",
+    policy: "https://github.com/mie-intel/crowdfunding-solana/blob/master/SECURITY.md",
+    source_code: "https://github.com/mie-intel/crowdfunding-solana",
+    preferred_languages: "en",
+    auditors: "None"
+}
+
 #[program]
 pub mod crowdfunding {
     use super::*;
