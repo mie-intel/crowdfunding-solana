@@ -81,6 +81,11 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Restore program keypair
+        run: |
+          mkdir -p target/deploy
+          echo '${{ secrets.PROGRAM_KEYPAIR }}' > target/deploy/crowdfunding-keypair.json
+
       - name: Build program
         run: anchor build
 
