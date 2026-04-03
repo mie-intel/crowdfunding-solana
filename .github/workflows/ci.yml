@@ -90,7 +90,9 @@ jobs:
         run: anchor build
 
       - name: Generate Solana keypair
-        run: solana-keygen new --no-bip39-passphrase --silent
+        run: |
+          solana-keygen new --no-bip39-passphrase --silent
+          solana config set --url localhost
 
       - name: Run anchor tests
-        run: anchor test --skip-build
+        run: anchor test --skip-build --provider.cluster localnet
