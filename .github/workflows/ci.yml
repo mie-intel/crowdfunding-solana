@@ -91,7 +91,7 @@ jobs:
         run: anchor keys sync
 
       - name: Build program
-        run: anchor build
+        run: anchor build --provider.cluster localnet
 
       - name: Run anchor tests
-        run: anchor test --skip-build
+        run: anchor test --skip-build --provider.cluster localnet
