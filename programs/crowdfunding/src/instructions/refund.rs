@@ -49,7 +49,7 @@ pub fn refund(ctx: Context<Refund>) -> Result<()> {
 
     system_program::transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.system_program.key(),
             system_program::Transfer {
                 from: ctx.accounts.vault.to_account_info(),
                 to: ctx.accounts.contributor.to_account_info(),

@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
+crowdfunding_mieintel = "Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S"
 
 [programs.devnet]
-crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
+crowdfunding_mieintel = "Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S"
 
 [registry]
 # url = "http://localhost:8899"
