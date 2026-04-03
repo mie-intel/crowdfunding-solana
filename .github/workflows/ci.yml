@@ -89,5 +89,11 @@ jobs:
       - name: Build program
         run: anchor build 
 
+      - name: Generate Solana keypair
+        run: |
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-bip39-passphrase --silent --outfile ~/.config/solana/id.json
+          solana config set --url localhost
+
       - name: Run anchor tests
         run: anchor test --skip-build
