@@ -42,3 +42,19 @@ pub struct Refunded {
     pub contributor: Pubkey,
     pub amount: u64, // Lamports returned to the contributor
 }
+
+/// Emitted when a creator cancels a campaign before the deadline.
+/// Only possible when no contributions have been made yet.
+#[event]
+pub struct CampaignCancelled {
+    pub campaign: Pubkey,
+    pub creator: Pubkey,
+}
+
+/// Emitted when an expired campaign with zero contributions is closed.
+/// Rent is returned to the creator; can be triggered by anyone.
+#[event]
+pub struct CampaignExpired {
+    pub campaign: Pubkey,
+    pub creator: Pubkey,
+}

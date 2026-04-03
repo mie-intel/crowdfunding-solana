@@ -37,4 +37,12 @@ pub mod crowdfunding {
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
         instructions::refund::refund(ctx)
     }
+
+    pub fn cancel_campaign(ctx: Context<CancelCampaign>) -> Result<()> {
+        instructions::cancel::cancel_campaign(ctx)
+    }
+
+    pub fn expire_campaign(ctx: Context<ExpireCampaign>) -> Result<()> {
+        instructions::expire::expire_campaign(ctx)
+    }
 }

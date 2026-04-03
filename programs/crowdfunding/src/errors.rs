@@ -28,4 +28,6 @@ pub enum CrowdfundingError {
     TitleTooLong,
     #[msg("Description exceeds maximum length of 200 characters")]
     DescTooLong,
+    #[msg("Campaign already has contributions; cannot cancel")]
+    HasContributions,
 }

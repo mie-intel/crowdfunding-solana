@@ -20,8 +20,7 @@ import * as path from "path";
 
 // ── Config (edit these if needed) ────────────────────────────────────────────
 
-// const RPC_URL    = "http://127.0.0.1:8899";
-const RPC_URL    = "https://api.devnet.solana.com";
+const RPC_URL    = "http://127.0.0.1:8899";
 const WALLET_PATH = path.join(os.homedir(), ".config/solana/id.json");
 const IDL_PATH   = path.join(process.cwd(), "./target/idl/crowdfunding.json");
 

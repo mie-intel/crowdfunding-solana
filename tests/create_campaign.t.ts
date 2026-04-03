@@ -25,12 +25,10 @@ describe("Campaign Creation", () => {
 
     // campaign PDA must be passed explicitly: Anchor's resolver cannot chain
     // registry → registry.campaign_count → campaign PDA in a single pass.
-    const tx = await program.methods
+    await program.methods
       .createCampaign("My First Campaign", "Raising funds for a great cause", goal, deadline)
       .accountsPartial({ creator: provider.wallet.publicKey, campaign: campaignPda })
       .rpc();
-
-    console.log("Transaction signature:", tx);
 
     const campaign = await program.account.campaign.fetch(campaignPda);
     assert.ok((campaign.id as anchor.BN).eq(expectedId));

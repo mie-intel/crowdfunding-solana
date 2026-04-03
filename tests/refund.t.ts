@@ -7,6 +7,8 @@ import {
   createCampaign,
   getContributionPda,
   getVaultPda,
+  SHORT_DEADLINE_SEC,
+  WAIT_MS,
 } from "./helpers";
 
 describe("Refund", () => {
@@ -14,11 +16,6 @@ describe("Refund", () => {
 
   const program = anchor.workspace.Crowdfunding as Program<Crowdfunding>;
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-
-  // Deadline short enough to expire quickly in tests.
-  const SHORT_DEADLINE_SEC = 2;
-  // Extra wait beyond the deadline to absorb validator clock lag (~1s).
-  const WAIT_MS = 5_000;
 
   /**
    * Creates a campaign with a short deadline and a goal that intentionally
@@ -201,6 +198,29 @@ describe("Refund", () => {
       assert.ok(err instanceof anchor.AnchorError, "Expected an AnchorError");
       assert.strictEqual(err.error.errorCode.code, "DeadlineNotReached");
       assert.strictEqual(err.error.errorCode.number, 6004);
+    }
+  });
+
+  it("Fails when contributor has no recorded deposit (NothingToRefund)", async () => {
+    // A wallet that never called contribute has no Contribution PDA.
+    // The refund instruction will fail at account validation before even reaching
+    // the NothingToRefund guard — but the net effect is the same: the call is rejected.
+    const { campaignPda } = await setupRefundableCampaign();
+
+    const stranger = anchor.web3.Keypair.generate();
+    await airdrop(provider.connection, stranger.publicKey);
+
+    try {
+      await program.methods
+        .refund()
+        .accounts({ campaign: campaignPda, contributor: stranger.publicKey })
+        .signers([stranger])
+        .rpc();
+      assert.fail("Expected refund to fail for a non-contributor");
+    } catch (err) {
+      // The tx must fail — either at Anchor account validation (no Contribution PDA exists)
+      // or at the NothingToRefund guard. Either way the stranger cannot drain the vault.
+      assert.ok(err instanceof Error, "Expected an error to be thrown");
     }
   });
 

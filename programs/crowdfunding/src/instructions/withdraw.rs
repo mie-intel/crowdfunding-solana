@@ -71,9 +71,12 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
 pub struct Withdraw<'info> {
     /// The campaign being withdrawn from.
     /// `has_one = creator` ensures only the original creator can sign.
+    /// `close = creator` returns the campaign's rent to the creator after a successful withdrawal —
+    /// the account's data is no longer needed once funds have been claimed.
     #[account(
         mut,
         has_one = creator @ CrowdfundingError::Unauthorized,
+        close = creator,
     )]
     pub campaign: Account<'info, Campaign>,
 
