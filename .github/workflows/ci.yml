@@ -81,19 +81,17 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Restore program keypair
-        run: |
-          mkdir -p target/deploy
-          echo '${{ secrets.PROGRAM_KEYPAIR }}' > target/deploy/crowdfunding-keypair.json
-
-      - name: Build program
-        run: anchor build 
-
       - name: Generate Solana keypair
         run: |
           mkdir -p ~/.config/solana
           solana-keygen new --no-bip39-passphrase --silent --outfile ~/.config/solana/id.json
           solana config set --url localhost
+
+      - name: Sync program keypair and declare_id
+        run: anchor keys sync
+
+      - name: Build program
+        run: anchor build
 
       - name: Run anchor tests
         run: anchor test --skip-build
