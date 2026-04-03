@@ -94,4 +94,4 @@ jobs:
         run: anchor build --provider.cluster localnet
 
       - name: Run anchor tests
-        run: anchor test --skip-build --provider.cluster localnet
+        run: anchor test --skip-build --provider.cluster localnet --validator legacy
