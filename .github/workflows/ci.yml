@@ -95,4 +95,4 @@ jobs:
           solana config set --url localhost
 
       - name: Run anchor tests
-        run: anchor test --skip-build --provider.cluster localnet
+        run: anchor test --skip-build
