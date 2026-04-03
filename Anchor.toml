@@ -8,11 +8,15 @@ skip-lint = false
 [programs.localnet]
 crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
 
+[programs.devnet]
+crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+# cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

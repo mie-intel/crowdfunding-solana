@@ -73,25 +73,129 @@ pnpm ts-mocha -p ./tsconfig.json -t 1000000 "tests/create_campaign.t.ts"
 
 ### Localnet
 
+**1. Sync program ID with your keypair (first time only)**
 ```bash
-# Start a local validator in one terminal
-solana-test-validator
+anchor keys sync
+```
 
-# Deploy in another terminal
-anchor deploy --provider.cluster localnet
+**2. Start a local validator in a separate terminal**
+```bash
+solana-test-validator --reset
+```
+
+**3. Build and deploy**
+```bash
+anchor build
+anchor deploy
+```
+
+**4. Verify**
+```bash
+solana program show <PROGRAM_ID> --url localhost
+```
+
+---
+
+### Devnet
+
+**1. Switch CLI to devnet**
+```bash
+solana config set --url devnet
+```
+
+**2. Fund your wallet (get SOL from the faucet if needed)**
+```bash
+solana balance
+solana airdrop 2   # run twice if needed, limit is 2 SOL per request
+# If rate-limited: https://faucet.solana.com
+```
+
+**3. Update `Anchor.toml`**
+```toml
+[provider]
+cluster = "devnet"
+
+[programs.devnet]
+crowdfunding = "GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX"
+```
+
+**4. Build and deploy**
+```bash
+anchor build
+anchor deploy
+```
+
+**5. Verify**
+```bash
+solana program show GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX --url devnet
+```
+
+> After deployment, if the program ID changes, update `declare_id!` in `programs/crowdfunding/src/lib.rs` and `Anchor.toml`. Or run `anchor keys sync` to do it automatically.
+
+---
+
+## Deployed Program
+
+| Network | Program ID | Explorer |
+|---------|------------|---------|
+| Devnet  | `GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX` | [View on Explorer](https://explorer.solana.com/address/GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX?cluster=devnet) |
+
+---
+
+## Smoke Tests
+
+Smoke tests exercise the full happy-path flow (create campaign → contribute → verify state) against a live deployment. No unit test framework needed — just run the script directly.
+
+### Localnet
+
+Requires a running local validator and a deployed program.
+
+```bash
+# Terminal 1
+solana-test-validator --reset
+
+# Terminal 2
+anchor build && anchor deploy
+pnpm smoke
 ```
 
 ### Devnet
 
-```bash
-# Switch CLI to devnet and airdrop SOL for fees
-solana config set --url devnet
-solana airdrop 2
+Uses your main wallet (`~/.config/solana/id.json`) as both creator and contributor — no airdrop required. Ensure your wallet has at least 1 SOL before running.
 
-anchor deploy --provider.cluster devnet
+```bash
+pnpm smoke:devnet
 ```
 
-After deployment, update the program ID in `declare_id!` inside `programs/crowdfunding/src/lib.rs` and in `Anchor.toml` if it changes.
+Get devnet SOL at [faucet.solana.com](https://faucet.solana.com) if your balance is low.
+
+**Example output:**
+```
+============================================================
+  Crowdfunding Smoke Test (devnet)
+============================================================
+Program : GFFGbdV6n5ZaYUoXqXgxg4PmDzEdChX9MddSHZMPoxLX
+RPC     : https://api.devnet.solana.com
+Wallet  : <your-wallet-address>
+Balance : 3.5000 SOL
+
+[ 1 ] create_campaign...
+  Tx      : 3xKj...
+  Goal    : 0.5000 SOL
+  Raised  : 0.0000 SOL
+
+[ 2 ] contribute...
+  Amount sent     : 0.1000 SOL
+  Campaign raised : 0.1000 SOL
+
+[ 3 ] Registry state...
+  Total campaigns : 1
+
+Total spent : 0.1023 SOL
+============================================================
+  Smoke test passed!
+============================================================
+```
 
 ---
 

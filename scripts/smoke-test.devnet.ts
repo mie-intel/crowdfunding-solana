@@ -1,12 +1,13 @@
 /**
- * Self-contained smoke test for the crowdfunding program on localnet.
+ * Self-contained smoke test for the crowdfunding program on devnet.
+ * Uses the main wallet as both creator and contributor — no airdrop needed.
  *
  * No env vars needed. Just run:
- *   pnpm ts-node -p ./tsconfig.json scripts/smoke-test.ts
+ *   pnpm smoke:devnet
  *
  * Prerequisites:
- *   1. solana-test-validator --reset   (running in another terminal)
- *   2. anchor deploy
+ *   - Program deployed on devnet (anchor deploy)
+ *   - ~/.config/solana/id.json has enough SOL (get from https://faucet.solana.com)
  */
 
 import * as anchor from "@coral-xyz/anchor";
@@ -17,15 +18,11 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
+// ── Config ────────────────────────────────────────────────────────────────────
 
-// ── Config (edit these if needed) ────────────────────────────────────────────
-
-// const RPC_URL    = "http://127.0.0.1:8899";
-const RPC_URL    = "https://api.devnet.solana.com";
+const RPC_URL     = "https://api.devnet.solana.com";
 const WALLET_PATH = path.join(os.homedir(), ".config/solana/id.json");
-const IDL_PATH   = path.join(process.cwd(), "./target/idl/crowdfunding.json");
-
-console.log(WALLET_PATH, IDL_PATH);
+const IDL_PATH    = path.join(process.cwd(), "./target/idl/crowdfunding.json");
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -64,17 +61,7 @@ function getContributionPda(
   return pda;
 }
 
-// ── Network helpers ───────────────────────────────────────────────────────────
-
-async function airdrop(
-  connection: anchor.web3.Connection,
-  pubkey: anchor.web3.PublicKey,
-  lamports = 10_000_000_000
-) {
-  const sig = await connection.requestAirdrop(pubkey, lamports);
-  const latestBlockhash = await connection.getLatestBlockhash();
-  await connection.confirmTransaction({ signature: sig, ...latestBlockhash });
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function nextCampaignId(program: Program<Crowdfunding>): Promise<BN> {
   const registryPda = getRegistryPda(program.programId);
@@ -94,7 +81,6 @@ function sol(lamports: BN | number): string {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Load payer wallet and build provider manually — no env vars needed
   const payer = loadWallet(WALLET_PATH);
   const connection = new anchor.web3.Connection(RPC_URL, "confirmed");
   const wallet = new anchor.Wallet(payer);
@@ -105,67 +91,63 @@ async function main() {
   const program = new Program<Crowdfunding>(idl, provider);
 
   console.log("=".repeat(60));
-  console.log("  Crowdfunding Smoke Test");
+  console.log("  Crowdfunding Smoke Test (devnet)");
   console.log("=".repeat(60));
   console.log(`Program : ${program.programId}`);
   console.log(`RPC     : ${RPC_URL}`);
-  console.log(`Payer   : ${payer.publicKey}`);
+  console.log(`Wallet  : ${payer.publicKey}`);
+
+  // ── Balance check ────────────────────────────────────────────────────────
+
+  const balance = await connection.getBalance(payer.publicKey);
+  console.log(`Balance : ${sol(balance)}`);
+
+  if (balance < 1_000_000_000) {
+    throw new Error(
+      `Insufficient balance (${sol(balance)}). Get devnet SOL at https://faucet.solana.com`
+    );
+  }
   console.log("");
 
-  // ── 1. Setup wallets ────────────────────────────────────────────────────
+  // ── 1. Create Campaign ───────────────────────────────────────────────────
+  // Use payer as creator — no airdrop needed
 
-  console.log("[ 1 ] Airdrop to creator & contributor...");
+  console.log("[ 1 ] create_campaign...");
 
-  const creator = anchor.web3.Keypair.generate();
-  const contributor = anchor.web3.Keypair.generate();
-
-  await airdrop(connection, creator.publicKey);
-  await airdrop(connection, contributor.publicKey);
-
-  console.log(`  Creator     : ${creator.publicKey}  (${sol(10_000_000_000)})`);
-  console.log(`  Contributor : ${contributor.publicKey}  (${sol(10_000_000_000)})`);
-  console.log("");
-
-  // ── 2. Create Campaign ──────────────────────────────────────────────────
-
-  console.log("[ 2 ] create_campaign...");
-
-  const goal = new BN(2_000_000_000); // 2 SOL
-  const deadline = new BN(Math.floor(Date.now() / 1000) + 3600); // +1 jam
+  const goal = new BN(500_000_000); // 0.5 SOL (small for devnet testing)
+  const deadline = new BN(Math.floor(Date.now() / 1000) + 3600); // +1 hour
   const campaignId = await nextCampaignId(program);
   const campaignPda = getCampaignPda(program.programId, campaignId);
 
   const createTx = await program.methods
-    .createCampaign("Smoke Test Campaign", "Testing crowdfunding on localnet", goal, deadline)
-    .accountsPartial({ creator: creator.publicKey, campaign: campaignPda })
-    .signers([creator])
+    .createCampaign("Devnet Smoke Test", "Testing crowdfunding on devnet", goal, deadline)
+    .accountsPartial({ creator: payer.publicKey, campaign: campaignPda })
     .rpc();
 
   const campaign = await program.account.campaign.fetch(campaignPda);
   console.log(`  Tx      : ${createTx}`);
   console.log(`  PDA     : ${campaignPda}`);
   console.log(`  Title   : ${campaign.title}`);
-  console.log(`  Desc    : ${campaign.description}`);
   console.log(`  Goal    : ${sol(campaign.goal as BN)}`);
   console.log(`  Raised  : ${sol(campaign.raised as BN)}`);
   console.log(`  Claimed : ${campaign.claimed}`);
   console.log("");
 
-  // ── 3. Contribute ───────────────────────────────────────────────────────
+  // ── 2. Contribute ────────────────────────────────────────────────────────
+  // Use payer as contributor too — same wallet, different role
 
-  console.log("[ 3 ] contribute...");
+  console.log("[ 2 ] contribute...");
 
-  const amount = new BN(500_000_000); // 0.5 SOL
-  const contributionPda = getContributionPda(program.programId, campaignPda, contributor.publicKey);
+  const amount = new BN(100_000_000); // 0.1 SOL
+  const contributionPda = getContributionPda(program.programId, campaignPda, payer.publicKey);
 
   const contributeTx = await program.methods
     .contribute(amount)
     .accountsPartial({
-      contributor: contributor.publicKey,
+      contributor: payer.publicKey,
       campaign: campaignPda,
       contribution: contributionPda,
     })
-    .signers([contributor])
     .rpc();
 
   const campaignAfter = await program.account.campaign.fetch(campaignPda);
@@ -176,12 +158,17 @@ async function main() {
   console.log(`  Contribution    : ${sol(contributionAcc.amount as BN)}`);
   console.log("");
 
-  // ── 4. Registry ─────────────────────────────────────────────────────────
+  // ── 3. Registry ──────────────────────────────────────────────────────────
 
-  console.log("[ 4 ] Registry state...");
+  console.log("[ 3 ] Registry state...");
 
   const registry = await program.account.campaignRegistry.fetch(getRegistryPda(program.programId));
   console.log(`  Total campaigns : ${registry.campaignCount}`);
+  console.log("");
+
+  const balanceAfter = await connection.getBalance(payer.publicKey);
+  console.log(`Wallet balance after : ${sol(balanceAfter)}`);
+  console.log(`Total spent          : ${sol(balance - balanceAfter)}`);
   console.log("");
 
   console.log("=".repeat(60));

@@ -3,7 +3,8 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "smoke": "ts-node --project tsconfig.json scripts/smoke-test.ts"
+    "smoke": "ts-node --project tsconfig.json scripts/smoke-test.ts",
+    "smoke:devnet": "ts-node --project tsconfig.json scripts/smoke-test.devnet.ts"
   },
   "type": "module",
   "dependencies": {
