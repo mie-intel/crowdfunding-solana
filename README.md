@@ -144,6 +144,30 @@ solana program show <PROGRAM_ID> --url devnet
 
 ---
 
+## Verify Program
+
+On-chain verification uses a custom Docker image to ensure a reproducible build environment that matches the deployed binary.
+
+**1. Build the custom Docker image** (from the repo root where `Dockerfile` lives):
+
+```bash
+docker build -t solana-custom-3.1.12 .
+```
+
+**2. Run verification**
+
+```bash
+solana-verify verify-from-repo \
+  -u mainnet-beta \
+  --program-id Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S \
+  --docker-image solana-custom-3.1.12 \
+  https://github.com/mie-intel/crowdfunding-solana
+```
+
+`solana-verify` builds the program inside the Docker image and compares the resulting binary hash against the on-chain program. A passing result means the deployed bytecode matches this source code exactly.
+
+---
+
 ## Smoke Tests
 
 Smoke tests exercise the full happy-path flow (create campaign → contribute → verify state) against a live deployment.
