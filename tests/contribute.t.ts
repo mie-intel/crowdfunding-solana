@@ -42,9 +42,10 @@ describe("Contribute", () => {
     assert.ok(contribution.campaign.equals(campaignPda));
     assert.ok((contribution.amount as anchor.BN).eq(amount));
 
-    // Vault must hold exactly the contributed lamports.
+    // Vault holds contributed lamports plus the rent pre-funded at campaign creation.
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBalance = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBalance, amount.toNumber());
+    assert.equal(vaultBalance, amount.toNumber() + vaultRent);
   });
 
   it("Accumulates multiple contributions from the same contributor", async () => {
@@ -81,9 +82,10 @@ describe("Contribute", () => {
     const campaign = await program.account.campaign.fetch(campaignPda);
     assert.ok((campaign.raised as anchor.BN).eq(totalAmount));
 
-    // Vault must hold the combined lamports.
+    // Vault holds combined lamports plus the rent pre-funded at campaign creation.
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBalance = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBalance, totalAmount.toNumber());
+    assert.equal(vaultBalance, totalAmount.toNumber() + vaultRent);
   });
 
   it("Multiple contributors each get their own contribution account", async () => {
@@ -129,9 +131,10 @@ describe("Contribute", () => {
     const campaign = await program.account.campaign.fetch(campaignPda);
     assert.ok((campaign.raised as anchor.BN).eq(amountA.add(amountB)));
 
-    // Vault holds combined lamports from both contributors.
+    // Vault holds combined lamports from both contributors plus pre-funded rent.
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBalance = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBalance, amountA.add(amountB).toNumber());
+    assert.equal(vaultBalance, amountA.add(amountB).toNumber() + vaultRent);
   });
 
   it("Allows contributions that push raised above the goal (no cap)", async () => {
@@ -156,8 +159,9 @@ describe("Contribute", () => {
     assert.ok((campaign.raised as anchor.BN).eq(overAmount));
     assert.ok((campaign.raised as anchor.BN).gt(campaign.goal as anchor.BN));
 
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBalance = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBalance, overAmount.toNumber());
+    assert.equal(vaultBalance, overAmount.toNumber() + vaultRent);
   });
 
   it("Fails when amount is zero", async () => {

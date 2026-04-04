@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 use crate::errors::CrowdfundingError;
 use crate::events::CampaignCreated;
@@ -6,12 +7,12 @@ use crate::state::{Campaign, CampaignRegistry};
 
 /// Creates a new fundraising campaign and assigns it a unique sequential ID.
 ///
-/// The ID is issued by the global `CampaignRegistry` singleton (similar to a
-/// database auto-increment). Clients can later look up any campaign in O(1) by
-/// deriving its PDA from the ID — no on-chain iteration required.
+/// Each creator has their own `CampaignRegistry` PDA (seeded by their pubkey),
+/// so campaign-creation throughput scales with the number of unique creators
+/// rather than being bottlenecked by a single global account.
 ///
-/// The assigned campaign ID is emitted as a `CampaignCreated` event so callers
-/// can observe it (Solana instructions do not return values to the caller).
+/// The vault PDA is pre-funded with the rent-exempt minimum so that even a
+/// contribution of 1 lamport never fails the Solana rent check.
 ///
 /// # Arguments
 /// * `title`       - Campaign title; max 50 characters.
@@ -28,8 +29,9 @@ use crate::state::{Campaign, CampaignRegistry};
 /// * [`CrowdfundingError::Overflow`]        — campaign_count would overflow u64.
 ///
 /// # Side Effects
-/// * Initialises (or reuses) the `CampaignRegistry` account.
+/// * Initialises (or reuses) the creator's `CampaignRegistry` account.
 /// * Initialises the `Campaign` account.
+/// * Pre-funds the vault PDA with the rent-exempt minimum.
 /// * Increments `registry.campaign_count`.
 /// * Emits a `CampaignCreated` event.
 pub fn create_campaign(
@@ -56,8 +58,9 @@ pub fn create_campaign(
     );
 
     // Snapshot the current count — this becomes the new campaign's ID.
-    // Conceptually identical to an array index: campaign[id] lives at the PDA
-    // derived from ["campaign", id.to_le_bytes()].
+    // Each creator has an independent counter, so campaign IDs are unique per
+    // (creator, id) pair. Clients derive the PDA as:
+    // PDA(["campaign", creator, id.to_le_bytes()]).
     let registry = &mut ctx.accounts.registry;
     let campaign_id = registry.campaign_count;
 
@@ -78,6 +81,21 @@ pub fn create_campaign(
     campaign.claimed = false;
     campaign.bump = ctx.bumps.campaign;
 
+    // Pre-fund the vault with the rent-exempt minimum so that any contribution
+    // amount — even 1 lamport — passes Solana's rent check on the first transfer.
+    let rent = Rent::get()?;
+    let vault_rent_min = rent.minimum_balance(0);
+    system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.creator.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+            },
+        ),
+        vault_rent_min,
+    )?;
+
     // Emit the ID so the client can track it. In Solana, events are the
     // equivalent of a function return value for off-chain consumers.
     emit!(CampaignCreated {
@@ -94,32 +112,44 @@ pub fn create_campaign(
 
 #[derive(Accounts)]
 pub struct CreateCampaign<'info> {
-    /// Global registry that issues sequential campaign IDs.
-    /// Created on the very first campaign; reused for all subsequent ones.
+    /// Per-creator registry that issues sequential campaign IDs.
+    /// Sharding by creator eliminates the single global write bottleneck:
+    /// concurrent campaign creation from different wallets no longer contends
+    /// on one account.
     #[account(
         init_if_needed,
         payer = creator,
         space = CampaignRegistry::LEN,
-        seeds = [b"registry"],
+        seeds = [b"registry", creator.key().as_ref()],
         bump,
     )]
     pub registry: Account<'info, CampaignRegistry>,
 
-    /// The campaign account — PDA keyed by the sequential ID.
-    /// Seeds: ["campaign", registry.campaign_count.to_le_bytes()]
+    /// The campaign account — PDA keyed by (creator, sequential ID).
+    /// Seeds: ["campaign", creator, registry.campaign_count.to_le_bytes()]
     ///
-    /// Using the counter as the seed is what enables unlimited campaigns:
-    /// each ID maps to a unique PDA address, just like an array index maps to
-    /// a memory address. Any client can look up campaign N in O(1) by deriving
-    /// PDA(["campaign", N]).
+    /// Using creator + counter as the seed makes the PDA unique per creator
+    /// and enables O(1) lookup: given creator and ID, the address is fully
+    /// deterministic. Two different creators can both have campaign ID 0
+    /// without collision.
     #[account(
         init,
         payer = creator,
         space = Campaign::LEN,
-        seeds = [b"campaign", registry.campaign_count.to_le_bytes().as_ref()],
+        seeds = [b"campaign", creator.key().as_ref(), registry.campaign_count.to_le_bytes().as_ref()],
         bump,
     )]
     pub campaign: Account<'info, Campaign>,
+
+    /// Vault PDA that will custody the campaign's SOL contributions.
+    /// Pre-funded here with the rent-exempt minimum (creator pays) so that
+    /// even a 1-lamport first contribution never fails Solana's rent check.
+    #[account(
+        mut,
+        seeds = [b"vault", campaign.key().as_ref()],
+        bump,
+    )]
+    pub vault: SystemAccount<'info>,
 
     /// The wallet paying for account rent; becomes the campaign creator.
     #[account(mut)]

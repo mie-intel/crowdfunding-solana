@@ -84,8 +84,10 @@ describe("Refund", () => {
     const { campaignPda, contributor, vaultPda, contributeAmount } =
       await setupRefundableCampaign();
 
+    // Vault holds contribution plus the rent pre-funded at campaign creation.
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBefore = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBefore, contributeAmount.toNumber());
+    assert.equal(vaultBefore, contributeAmount.toNumber() + vaultRent);
 
     await program.methods
       .refund()
@@ -93,8 +95,9 @@ describe("Refund", () => {
       .signers([contributor])
       .rpc();
 
+    // Only the contribution amount is refunded; the pre-funded vault rent remains.
     const vaultAfter = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultAfter, 0, "vault should be empty after the only contributor refunds");
+    assert.equal(vaultAfter, vaultRent, "vault retains the pre-funded rent after all refunds");
   });
 
   it("Multiple contributors can each refund independently", async () => {
@@ -155,9 +158,10 @@ describe("Refund", () => {
       "contributor B should receive back their contribution"
     );
 
-    // Vault must be empty after all contributors have refunded.
+    // Each contribution is refunded individually; the pre-funded vault rent remains.
+    const vaultRent = await provider.connection.getMinimumBalanceForRentExemption(0);
     const vaultBalance = await provider.connection.getBalance(vaultPda);
-    assert.equal(vaultBalance, 0, "vault should be empty after all refunds");
+    assert.equal(vaultBalance, vaultRent, "vault retains the pre-funded rent after all refunds");
 
     // Both contribution accounts must be closed.
     const infoA = await provider.connection.getAccountInfo(

@@ -48,7 +48,7 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
 
     system_program::transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.system_program.key(),
+            ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.vault.to_account_info(),
                 to: ctx.accounts.creator.to_account_info(),
@@ -71,12 +71,11 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
 pub struct Withdraw<'info> {
     /// The campaign being withdrawn from.
     /// `has_one = creator` ensures only the original creator can sign.
-    /// `close = creator` returns the campaign's rent to the creator after a successful withdrawal —
-    /// the account's data is no longer needed once funds have been claimed.
+    /// The account is intentionally kept open so that associated Contribution
+    /// accounts remain accessible and contributors can verify campaign state.
     #[account(
         mut,
         has_one = creator @ CrowdfundingError::Unauthorized,
-        close = creator,
     )]
     pub campaign: Account<'info, Campaign>,
 

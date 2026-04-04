@@ -57,10 +57,10 @@ describe("Withdraw", () => {
       .signers([creator])
       .rpc();
 
-    // Campaign account must be closed — close = creator deletes it after the handler.
-    // This is stronger than checking campaign.claimed: the account no longer exists.
-    const campaignInfo = await provider.connection.getAccountInfo(campaignPda);
-    assert.isNull(campaignInfo, "campaign account should be closed after withdrawal");
+    // Campaign account stays open so associated Contribution accounts remain accessible.
+    // The claimed flag is the guard against double-withdrawal.
+    const campaign = await program.account.campaign.fetch(campaignPda);
+    assert.isTrue(campaign.claimed, "campaign should be marked as claimed after withdrawal");
 
     // Vault must be empty — all lamports moved to creator.
     const vaultBalance = await provider.connection.getBalance(vaultPda);
@@ -154,19 +154,18 @@ describe("Withdraw", () => {
       .signers([creator])
       .rpc();
 
-    // Second withdraw — must be rejected.
-    // With close = creator, the campaign account is deleted after the first withdraw,
-    // so the second attempt fails at account loading (AccountNotInitialized) before
-    // ever reaching the AlreadyClaimed guard. Either way, double-withdrawal is impossible.
+    // Second withdraw — must be rejected with AlreadyClaimed.
+    // The campaign account stays open with claimed = true, so the CEI guard fires.
     try {
       await program.methods
         .withdraw()
         .accountsPartial({ campaign: campaignPda, creator: creator.publicKey })
         .signers([creator])
         .rpc();
-      assert.fail("Expected second withdrawal to fail");
+      assert.fail("Expected second withdrawal to fail with AlreadyClaimed");
     } catch (err) {
-      assert.ok(err instanceof Error, "Expected an error to be thrown");
+      assert.ok(err instanceof anchor.AnchorError, "Expected an AnchorError");
+      assert.strictEqual(err.error.errorCode.code, "AlreadyClaimed");
     }
   });
 

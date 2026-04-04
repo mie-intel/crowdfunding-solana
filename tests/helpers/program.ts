@@ -4,13 +4,14 @@ import { Crowdfunding } from "../../target/types/crowdfunding";
 import { getCampaignPda, getRegistryPda } from "./pda";
 
 /**
- * Returns the ID that will be assigned to the next campaign.
- * Reads registry.campaign_count; returns 0 if the registry doesn't exist yet.
+ * Returns the ID that will be assigned to the next campaign for the given creator.
+ * Reads the creator's registry.campaign_count; returns 0 if the registry doesn't exist yet.
  */
 export async function nextCampaignId(
-  program: Program<Crowdfunding>
+  program: Program<Crowdfunding>,
+  creator: anchor.web3.PublicKey
 ): Promise<anchor.BN> {
-  const registryPda = getRegistryPda(program.programId);
+  const registryPda = getRegistryPda(program.programId, creator);
   try {
     const registry = await program.account.campaignRegistry.fetch(registryPda);
     return registry.campaignCount as anchor.BN;
@@ -31,8 +32,8 @@ export async function createCampaign(
   title = "Test Campaign",
   description = "A test campaign description"
 ): Promise<anchor.web3.PublicKey> {
-  const id = await nextCampaignId(program);
-  const campaignPda = getCampaignPda(program.programId, id);
+  const id = await nextCampaignId(program, creator.publicKey);
+  const campaignPda = getCampaignPda(program.programId, creator.publicKey, id);
 
   await program.methods
     .createCampaign(title, description, goal, deadline)

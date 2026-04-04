@@ -14,14 +14,14 @@ describe("Campaign Creation", () => {
 
   const program = anchor.workspace.Crowdfunding as Program<Crowdfunding>;
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const registryPda = getRegistryPda(program.programId);
+  const registryPda = getRegistryPda(program.programId, provider.wallet.publicKey);
 
   it("Creates a campaign and assigns a sequential ID", async () => {
     const goal = new anchor.BN(1_000_000_000);
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 3600);
 
-    const expectedId = await nextCampaignId(program);
-    const campaignPda = getCampaignPda(program.programId, expectedId);
+    const expectedId = await nextCampaignId(program, provider.wallet.publicKey);
+    const campaignPda = getCampaignPda(program.programId, provider.wallet.publicKey, expectedId);
 
     // campaign PDA must be passed explicitly: Anchor's resolver cannot chain
     // registry → registry.campaign_count → campaign PDA in a single pass.
@@ -45,7 +45,7 @@ describe("Campaign Creation", () => {
     assert.ok((registry.campaignCount as anchor.BN).eq(expectedId.addn(1)));
   });
 
-  it("Each creator gets a unique sequential campaign ID", async () => {
+  it("Each creator gets their own sequential campaign ID starting from 0", async () => {
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 3600);
 
     const creatorA = anchor.web3.Keypair.generate();
@@ -53,26 +53,27 @@ describe("Campaign Creation", () => {
     await airdrop(provider.connection, creatorA.publicKey);
     await airdrop(provider.connection, creatorB.publicKey);
 
-    const idA = await nextCampaignId(program);
+    // Each creator has their own registry; both start at campaign ID 0.
+    const idA = await nextCampaignId(program, creatorA.publicKey);
     await program.methods
       .createCampaign("Campaign A", "Description A", new anchor.BN(1_000_000), deadline)
-      .accountsPartial({ creator: creatorA.publicKey, campaign: getCampaignPda(program.programId, idA) })
+      .accountsPartial({ creator: creatorA.publicKey, campaign: getCampaignPda(program.programId, creatorA.publicKey, idA) })
       .signers([creatorA])
       .rpc();
 
-    const idB = await nextCampaignId(program);
+    const idB = await nextCampaignId(program, creatorB.publicKey);
     await program.methods
       .createCampaign("Campaign B", "Description B", new anchor.BN(2_000_000), deadline)
-      .accountsPartial({ creator: creatorB.publicKey, campaign: getCampaignPda(program.programId, idB) })
+      .accountsPartial({ creator: creatorB.publicKey, campaign: getCampaignPda(program.programId, creatorB.publicKey, idB) })
       .signers([creatorB])
       .rpc();
 
-    const campaignA = await program.account.campaign.fetch(getCampaignPda(program.programId, idA));
-    const campaignB = await program.account.campaign.fetch(getCampaignPda(program.programId, idB));
+    const campaignA = await program.account.campaign.fetch(getCampaignPda(program.programId, creatorA.publicKey, idA));
+    const campaignB = await program.account.campaign.fetch(getCampaignPda(program.programId, creatorB.publicKey, idB));
 
-    assert.ok((campaignA.id as anchor.BN).eq(idA));
-    assert.ok((campaignB.id as anchor.BN).eq(idB));
-    assert.ok(idB.eq(idA.addn(1)), "campaign IDs must be sequential");
+    // IDs are per-creator: both start at 0 for first-time creators.
+    assert.ok((campaignA.id as anchor.BN).eqn(0));
+    assert.ok((campaignB.id as anchor.BN).eqn(0));
     assert.ok(campaignA.creator.equals(creatorA.publicKey));
     assert.ok(campaignB.creator.equals(creatorB.publicKey));
   });
@@ -83,7 +84,7 @@ describe("Campaign Creation", () => {
 
     const goal = new anchor.BN(0);
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) + 3600);
-    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const campaignPda = getCampaignPda(program.programId, creator.publicKey, await nextCampaignId(program, creator.publicKey));
 
     try {
       await program.methods
@@ -105,7 +106,7 @@ describe("Campaign Creation", () => {
 
     const goal = new anchor.BN(1_000_000_000);
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) - 1);
-    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const campaignPda = getCampaignPda(program.programId, creator.publicKey, await nextCampaignId(program, creator.publicKey));
 
     try {
       await program.methods
@@ -125,7 +126,7 @@ describe("Campaign Creation", () => {
     const creator = anchor.web3.Keypair.generate();
     await airdrop(provider.connection, creator.publicKey);
 
-    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const campaignPda = getCampaignPda(program.programId, creator.publicKey, await nextCampaignId(program, creator.publicKey));
     const longTitle = "A".repeat(51);
 
     try {
@@ -146,7 +147,7 @@ describe("Campaign Creation", () => {
     const creator = anchor.web3.Keypair.generate();
     await airdrop(provider.connection, creator.publicKey);
 
-    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const campaignPda = getCampaignPda(program.programId, creator.publicKey, await nextCampaignId(program, creator.publicKey));
     const longDescription = "A".repeat(201);
 
     try {
@@ -172,7 +173,7 @@ describe("Campaign Creation", () => {
     // can lag JS wall time by ~1s, so "now" may still be > validator clock and pass
     // the deadline check. Subtracting 2s guarantees it falls behind the validator clock.
     const deadline = new anchor.BN(Math.floor(Date.now() / 1000) - 2);
-    const campaignPda = getCampaignPda(program.programId, await nextCampaignId(program));
+    const campaignPda = getCampaignPda(program.programId, creator.publicKey, await nextCampaignId(program, creator.publicKey));
 
     try {
       await program.methods

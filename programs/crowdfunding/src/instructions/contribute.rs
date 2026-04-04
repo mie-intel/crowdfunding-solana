@@ -59,7 +59,7 @@ pub fn contribute(ctx: Context<Contribute>, amount: u64) -> Result<()> {
     // would see the already-updated raised/contribution amounts.
     system_program::transfer(
         CpiContext::new(
-            ctx.accounts.system_program.key(),
+            ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.contributor.to_account_info(),
                 to: ctx.accounts.vault.to_account_info(),

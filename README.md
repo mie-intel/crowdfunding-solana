@@ -10,7 +10,7 @@ A decentralized crowdfunding program built on Solana using the [Anchor](https://
 |---|---|
 | Rust | 1.92.0 (pinned via `rust-toolchain.toml`) |
 | Solana CLI | 3.1.11 |
-| Anchor CLI | 1.0.0 |
+| Anchor CLI | 0.32.1 |
 | Node.js | 20+ |
 | pnpm | 9+ |
 
@@ -18,7 +18,7 @@ Install Anchor CLI:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -L https://github.com/solana-foundation/anchor/releases/download/v1.0.0/anchor-1.0.0-x86_64-unknown-linux-gnu \
+curl -L https://github.com/solana-foundation/anchor/releases/download/v0.32.1/anchor-0.32.1-x86_64-unknown-linux-gnu \
   -o ~/.local/bin/anchor
 chmod +x ~/.local/bin/anchor
 export PATH="$HOME/.local/bin:$PATH"

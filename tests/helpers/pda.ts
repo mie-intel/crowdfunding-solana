@@ -1,8 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 
-export function getRegistryPda(programId: anchor.web3.PublicKey): anchor.web3.PublicKey {
+export function getRegistryPda(
+  programId: anchor.web3.PublicKey,
+  creator: anchor.web3.PublicKey
+): anchor.web3.PublicKey {
   const [pda] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("registry")],
+    [Buffer.from("registry"), creator.toBuffer()],
     programId
   );
   return pda;
@@ -10,10 +13,11 @@ export function getRegistryPda(programId: anchor.web3.PublicKey): anchor.web3.Pu
 
 export function getCampaignPda(
   programId: anchor.web3.PublicKey,
+  creator: anchor.web3.PublicKey,
   id: anchor.BN
 ): anchor.web3.PublicKey {
   const [pda] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("campaign"), id.toArrayLike(Buffer, "le", 8)],
+    [Buffer.from("campaign"), creator.toBuffer(), id.toArrayLike(Buffer, "le", 8)],
     programId
   );
   return pda;
