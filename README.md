@@ -398,11 +398,6 @@ program.addEventListener("contributed", (event) => {
 
 ---
 
-## Final Score
-
-![Final score](images/score.jpg)
-
-
 ## Security Notes
 
 - **CEI pattern** enforced in all handlers — state is mutated before any CPI to prevent reentrancy.
@@ -412,3 +407,7 @@ program.addEventListener("contributed", (event) => {
 - **`close = contributor`** on `Contribution` in `refund` — rent is reclaimed and the account cannot be reused after a refund.
 - **Checked arithmetic** (`checked_add`) on all lamport accumulations — overflows are caught and rejected.
 - **`security.txt`** embedded in the program binary — contact info readable on-chain via `solana-security-txt`.
+
+## Final Score
+
+![Final score](images/score.jpg)
