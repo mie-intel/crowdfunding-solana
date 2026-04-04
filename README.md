@@ -144,27 +144,53 @@ solana program show <PROGRAM_ID> --url devnet
 
 ---
 
-## Verify Program
+## Verify Program (Only works on mainnet)
 
 On-chain verification uses a custom Docker image to ensure a reproducible build environment that matches the deployed binary.
 
 **1. Build the custom Docker image** (from the repo root where `Dockerfile` lives):
 
 ```bash
-docker build -t solana-custom-3.1.12 .
+docker build -t solana-custom-3.1.12:latest .
 ```
 
-**2. Run verification**
+**2. Build a verifiable binary**
+
+```bash
+anchor build --verifiable --base-image solana-custom-3.1.12:latest
+```
+
+This produces `target/verifiable/crowdfunding.so` — a reproducibly-built binary tied to the Docker image.
+
+**3. Deploy the verifiable binary**
+
+```bash
+solana program deploy target/verifiable/crowdfunding.so \
+  --program-id Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S \
+  -u m
+```
+
+If the deploy fails mid-upload (e.g. due to a network interruption), resume with the buffer address printed in the error output:
+
+```bash
+solana program deploy \
+  --buffer <buffer> \
+  --program-id Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S \
+  -u m
+```
+
+**4. Run on-chain verification**
 
 ```bash
 solana-verify verify-from-repo \
-  -u https://api.devnet.solana.com \
   --program-id Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S \
-  --base-image solana-custom-3.1.12 \
+  -u mainnet \
+  --commit-hash <commit-hash> \
+  --base-image solana-custom-3.1.12:latest \
   https://github.com/mie-intel/crowdfunding-solana
 ```
 
-`solana-verify` builds the program inside the Docker image and compares the resulting binary hash against the on-chain program. A passing result means the deployed bytecode matches this source code exactly.
+`solana-verify` builds the program inside the Docker image at the specified commit and compares the resulting binary hash against the on-chain program. A passing result means the deployed bytecode matches this source code exactly.
 
 ---
 
