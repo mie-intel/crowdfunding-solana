@@ -140,7 +140,7 @@ solana program show <PROGRAM_ID> --url devnet
 
 | Network | Program ID | Explorer |
 |---------|------------|---------|
-| Devnet  | `Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S` | [View on Solscan](https://solscan.io/account/Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S) |
+| Devnet  | `Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S` | [View on Solscan](https://solscan.io/account/Ek2bLWaxfc3aY25LL89LCL3aJgHRBhEzvApxYWnErA4S?cluster=devnet) |
 
 ---
 
