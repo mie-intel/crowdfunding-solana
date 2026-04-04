@@ -398,6 +398,11 @@ program.addEventListener("contributed", (event) => {
 
 ---
 
+## Final Score
+
+![Final score](images/score.jpg)
+
+
 ## Security Notes
 
 - **CEI pattern** enforced in all handlers — state is mutated before any CPI to prevent reentrancy.
